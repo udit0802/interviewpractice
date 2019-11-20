@@ -1,0 +1,126 @@
+Features supported:
+1.Able to tweet.
+2.Timelines(Home,User,Search)
+3.Trending show
+
+Facts:
+No of users : 300M+
+tweets write : 600tweets/sec
+tweets read : 600,000tweets/sec
+
+So twitter is read heavy
+not like a banking application which needs to be consistent so it can be eventual consistent(tweets need not to appear at the same time)
+storage cost - it is very less as the no. of characters allowed are 140
+
+storage used:
+Redis and Db
+Redis is used for faster access as the data is in memory and also persistent we have to keep a copy in db as well.
+
+Db tables:
+Usertable
+Followers
+Tweets -> this contains the tweets and retweets of user.
+
+E-R relationship->
+Users 1......N Followers
+Users 1......N Tweets
+
+Redis structure of data:
+1.<USER-ID>-Tweets :[1,2,3,4,...]
+2.<USER-ID>-Followers : [1,2,3,4,...]
+3.<TWEET-ID>-Tweet : {"Hello!!!",creation_time}
+4.<USER-ID>-Hometimeline : [{tweet1},{tweet2},...]
+5.<USER-ID>-CelebritiesFoloowed : []
+
+Compute the User timeline:
+As the twitter is read heavy so we cannot get the timeline from db as it won't scale ,
+so we use redis for that so what happens every time someone tweets we save the data to redis as well
+in table 2 and 3 and during computation of user timeline we return all the tweets of user sorted in desc
+of creation time.
+so this can also be precomputed and put in another redis cache
+<USER-ID>-Hometimeline : [{tweets}]
+
+
+Compute the Home timeline:
+Approach1(will not work) - Reactive:
+1.Fetch all the users a person is following for whom we are computing home timeline.
+2.Fetch all the tweets of the people he is following.
+3.Merge all the tweets aacording to time and return.
+This will fail in a read heavy system.
+
+Approach2(Fanout) - Proactive:
+In this techinique whenever a person tweets we put that tweet in db,his user timeline cache as well as
+put the tweet in the home timeline of the followers which is fanning out of the tweet.
+///////but this appraoch won't work with celebrities so:
+So what we can do is from celebrity perspective we add the tweet in db and their user timeline
+for their followers we can whenever they access their home timeline we can fetch their home timeline
+cache and along with that fetch tweets from celebrities whom they are following separately and merge
+them and return and also we can update the home timeline of user with these tweets and next time fetch for 
+the time after which we fetched last time.
+
+Optimization:
+Do not precompute timeline for the people not logging in the system for a threshold this way we save
+lot of memory and processing.
+
+
+How to check if a #hashtag is ##############trending#############:
+using 2 concepts:
+1.Volume of tweets.
+2.Time taken to generate that volume.
+
+So for this they have to through each of the tweet and use stream processing frameworks\
+such as apache storm or apache heron.
+
+So each tweet goes through a pipeline:
+
+
+
+									-> geo loction tagger -> location count    
+Twitter system -> filter -> parser												-> redis -> API
+									-> count hashtag -> rank
+									
+
+All above are some kind of operators or operations which can ce scaled as desired based on their performance.
+								
+Above system sends the tweets to filter which is set to filter out some kind of words which can be setup 
+by some script.These words are such that which doesn't qualifies as trending such as fun,food,quotes and also
+check for violation content.
+
+Not all users use hastags on tweet so we need to parse such tweet to get meaningful information out of it
+using NLP and assign a hastag and remove all stop words such as to,the,has,now,etc.
+
+So after that data distributes in two pipelines firstly in the below pipeline we count the hastags coming
+in a particular time window like a map of word v/s count and after that calculate the rank and in the other 
+pipeline we tag the hastag with geolocation from where it originated because twitter has presence in many
+countries so trending hashtag in one country might not be in other so we not after tagging count on the basis
+of countries and put both results in redis which can fetched using any API.
+
+Search functionlity:
+Twitter uses inverted full text index in which whenever a person tweets than it is broken into words and
+hashtag which is maintined in table of word v/s tweets and words are indexed but it cannot be just kept 
+on one node because this might become single point of failure so it is a distributed system so it
+calls it as scatter and gather in which reqest is scattered to different systems and their results are
+gathered and returned.
+
+
+
+
+diagram:
+
+	mysql				db						apache storm for trend calculation					Zookeeper
+						^						^														^
+						|						|														|
+						-> twitter writer ------------> Fanout to home timeline and user timeline--->Redis
+						|						|														^
+						|						|														|		|
+						|->timeline service -----|--------------------------------------------------------
+client ->Load balancer --	|		|				|
+			^				|	|				V
+			|				|	|->search service
+			|				|
+			|				|
+			|				V
+			|				Push to websocket
+			-------	-  	---	-	|
+
+

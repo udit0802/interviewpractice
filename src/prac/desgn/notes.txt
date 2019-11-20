@@ -1,0 +1,53 @@
+URL shortner:
+
+1. Length of the url to be shortened.
+2. Volume of the traffic.
+3. Should the system be scaled.
+
+ traffic assumptions:
+ say twitter has 300 million users/month and our service is 10% famous as twitter
+ so the traffic will be around 30 million users/month i.e 1million users/day
+ 
+ 
+ url length assumptions:
+ urlshortner.com/7chars
+ 7 characters
+  
+ Data capacity model - this tells us how much we will be storing in a period of time
+ long url - > 2kb(2084chars)
+ short url -> 17 bytes (17 chars)
+ created_on -> 7 bytes (7 chars)
+ expire_on -> 7 bytes (7 chars)
+ 
+ around -> 2.031kb
+ 
+ 30m users -> 60.7 gb/month ->0.7 Tb/year -> 3.6 Tb/5yr
+ 
+ so to generate short url we can use:
+ 1. base62
+ 2. md5 hash
+ 
+ md5 hash also uses base 62 but it generates more than 7 characters so we have to take first 7 chars
+ but there is the problem of collision starts so to avoid this we can use
+ base 62 -> this is because this contains 62 charcters (A-Z a-z 0-9) so total of 3.5 Trillion
+ combinations for 7 chacters so this will work upto 110 years if used 1000 req/sec
+ 
+ Db -> As there is a lot of traffic it is very necessary to scale so this becomes very difficult to handle 
+ with RDBMS so move to NoSQL(highly available,easily scalable)
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Collabrative editing(google docs)
+ two problems to solve here:
+ 1.concurrency
+ 2.latency
+ Can we use lock based(turn based)approach here ?
+ no we can't so we move to optimistic concurrency control
+ we can use:
+ 1.event passing approach-> pass the events changes or line changes diff synching

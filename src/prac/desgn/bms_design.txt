@@ -1,0 +1,87 @@
+90000 tickets/day traffic
+apart from that people visit website to read reviews give review trailers and many more.
+
+
+Features:
+1.Highly concurrent
+2.Responsive UI
+3.Scaling to multiple regions
+4.payments
+5.movie suggestions
+6.comments and ratings
+7.movie info
+8.send tickets via email/sms/whatsapp
+9.Lock the seat for a particular time say 5 min when tried to book from multiple sources
+
+
+Bms gets information about theatres through 2 means:
+1.connnect to theatre db
+2.Api exposed by theatre
+
+
+																				Payment Gateway
+																					integration(ex. Juspay)
+											|---->Logstash -----> ELK
+											|
+											|
+								|--->Application server1----------|				|-------->RDBMS(Master slave)
+								|								  |				|
+clients----------> Load------------->Application server2----------|---->cache---|
+(Responsive ui)	   Balancer		|								  |				|
+								|--->Application server3----------|				|-------->No SQL(Multiple nodes
+													|											highly scalable)
+											.		|
+											.		|
+											.		|
+													|
+											|		|----------------------------------------------
+											|				|									  |
+											|				|									  |
+											V				|									  |
+										Queue				|------>Hadoop/ML					  V
+											|					(for movie recommendation)		Storm(Trends)
+											|
+											|
+									----------------
+									|				|
+									|...............|
+											|
+											V
+										Workers
+										(Performing async tasks
+										like sending email/sms)
+										
+									
+Db schema:
+
+RDBMS:
+
+GeoHeirarchy 1......N Theatres 1.....N Screens 1.....1 Movie
+										  1	 N				N
+										  .		\			|	
+										  .		 \			|
+										  .		  \			|
+										  N			\		1
+										  Tiers			1	Offers
+										  1					1
+										  .				   /	
+										  .               /
+										  .              /
+										  N            /
+										  Seats      N /
+										  	N
+User 1......N Tickets 1......................	
+
+
+
+NoSQL:
+
+1.Comments
+2.Ratings
+3.MovieInfo
+4.Trailers/Photos
+5.Artists
+6.Movie
+7.Cast
+8.Reviews
+9.Analytics							
